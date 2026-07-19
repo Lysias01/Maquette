@@ -1094,7 +1094,7 @@ body {
 <div class="page" id="page-fiche-film">
   <div class="container">
     <div style="padding-top:24px;margin-bottom:8px">
-      <button onclick="history.back()" style="background:none;border:none;cursor:pointer;color:var(--gris4);font-size:13px;display:flex;align-items:center;gap:6px">
+      <button onclick="goBackOr('cesoir')" style="background:none;border:none;cursor:pointer;color:var(--gris4);font-size:13px;display:flex;align-items:center;gap:6px">
         <i class="ti ti-arrow-left"></i>Retour aux programmes
       </button>
     </div>
@@ -1348,11 +1348,12 @@ body {
   <span style="margin-top:8px;display:block">Ouagadougou, Burkina Faso · 2026 · Maquette Version 1.0</span>
 </footer>
 
+document.addEventListener('click', function(e) {
 <script>
 let isAuthenticated = localStorage.getItem('cinefaso-auth') === '1';
 
-// ── Navigation principale ──
-function goTo(page) {
+// Utility: change page without double-pushing when handling popstate
+function goTo(page, push = true) {
   if (page === 'admin' && !isAuthenticated) {
     page = 'login';
   }
@@ -1373,6 +1374,25 @@ function goTo(page) {
   // Masquer footer dans admin
   const footer = document.getElementById('main-footer');
   if (footer) footer.style.display = page === 'admin' ? 'none' : '';
+
+  // push state pour permettre le bouton retour
+  if (push) {
+    try {
+      history.pushState({ page: page }, '', '#' + page);
+    } catch (e) {
+      // silent
+    }
+  }
+}
+
+// Retour intelligent : utilise l'historique du navigateur si possible,
+// sinon bascule vers une page de secours (ex : 'cesoir').
+function goBackOr(fallbackPage) {
+  if (history.length > 1) {
+    history.back();
+  } else {
+    goTo(fallbackPage || 'accueil');
+  }
 }
 
 // ── Menu hamburger ──
@@ -1432,6 +1452,20 @@ function handleLogin(event) {
     error.textContent = 'Identifiants incorrects. Essayez : salle@cinefaso.bf / cinefaso2026';
   }
 }
+
+// Gérer le bouton arrière du navigateur
+window.addEventListener('popstate', function(e) {
+  const page = (e.state && e.state.page) || location.hash.replace('#', '') || 'accueil';
+  goTo(page, false);
+});
+
+// Initialisation: si une ancre est présente, ouvrir cette page (sans pousser d'état)
+document.addEventListener('DOMContentLoaded', function() {
+  const start = location.hash.replace('#', '') || 'accueil';
+  goTo(start, false);
+  // remplacer l'état initial pour que popstate fonctionne proprement
+  try { history.replaceState({ page: start }, ''); } catch (e) {}
+});
 
 // Fermer le menu mobile au clic extérieur
 document.addEventListener('click', function(e) {
